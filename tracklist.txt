@@ -1,0 +1,19 @@
+!COMM Tracklist file to be read by the scrobbling tool.
+!COMM The scrobbling tool assumes that all tracks are of the format 'artist - track'.
+!COMM 	The artist and track separator can be a hyphen, en dash, or em dash.
+!COMM 	If more than 1 instances of (space)(dash)(space) is found, it will ask the user which to use in separating
+!COMM	If no instances of (space)(dash)(space) are found, it will ask if the user wants to retype the line to add   
+!COMM 		a separator or if they'd like to stop processing to double check the file (nothing is saved.)
+!COMM Special commands can be used within the file, they all start with an exclamation point.
+!COMM 	!COMM A comment in the file. Anything else in that line will be ignored.
+!COMM 	!DATE The date and time with which to start a group of tracks.
+!COMM		This must be used before any group of tracks.
+!COMM 		Format: 'MM/DD(/YYYY) HH:MI(:SS)'
+!COMM			Time is in 24 hour format
+!COMM 			Year and Second are optional. Defaults to the current year and '00' respectively.
+!COMM 	!INT Changes the interval between tracks (in minutes.)
+!COMM		Default: 3
+
+
+!DATE 8/19 6:25
+

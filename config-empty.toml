@@ -1,0 +1,10 @@
+# You'll need to get your api key and secret from LastFM and paste them in here before attempting to run this program.
+# The key and secret can be obtained here: https://www.last.fm/api/account/create
+[API]
+API_KEY 	= ""
+API_SECRET 	= ""
+
+# A user session key will be stored here after logging in.
+[SESSION]
+SESSION_KEY = ""
+USER		= ""
