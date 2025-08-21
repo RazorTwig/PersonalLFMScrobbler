@@ -5,3 +5,7 @@ logs/
 config.toml
 tst.py
 _tracklist.txt
+
+build/
+dist/
+scrobbler.spec
