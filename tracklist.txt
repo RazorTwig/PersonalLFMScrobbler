@@ -9,11 +9,15 @@
 !COMM 	!DATE The date and time with which to start a group of tracks.
 !COMM		This must be used before any group of tracks.
 !COMM 		Format: 'MM/DD(/YYYY) HH:MI(:SS)'
-!COMM			Time is in 24 hour format
+!COMM			Time is in 24 hour format.
 !COMM 			Year and Second are optional. Defaults to the current year and '00' respectively.
+!COMM			If only the time is specified, uses either a the previously stated date or the current date if
+!COMM				no previous date has been specified.
+!COMM	!ALB Sets or removes the current album being scrobbled
+!COMM		By default, no album information is sent to Last.FM
+!COMM		Format: blank or 'albumartist - album'
+!COMM			If left blank, scrobbles that come after this command will have no album information.
+!COMM			Specifying the album artist and album will tell the program to add that information to any
+!COMM				scrobbles that follow the command until it's changed by another !ALB command.
 !COMM 	!INT Changes the interval between tracks (in minutes.)
 !COMM		Default: 3
-
-
-!DATE 8/19 6:25
-

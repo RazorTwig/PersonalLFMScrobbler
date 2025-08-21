@@ -112,6 +112,11 @@ class Scrobble(Track):
 	def album_artist(self):
 		return self.track_album.album_artist
 	
+	def __iter__(self):
+		for k, v in  super().__iter__():
+			yield k, v
+		yield 'timestamp', self.timestamp
+	
 	def get_api_params(self, ind):
 		params = {}
 		

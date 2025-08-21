@@ -5,6 +5,11 @@ API_KEY 	= ""
 API_SECRET 	= ""
 
 # A user session key will be stored here after logging in.
-[SESSION]
+[USER]
+SESSION_KEY = ""
+USER		= ""
+
+# Multiple sessions can be saved and used with the '-u' or '--user' flag
+[USER2]
 SESSION_KEY = ""
 USER		= ""

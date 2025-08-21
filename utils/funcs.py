@@ -2,6 +2,7 @@ from time import time
 import sys
 from tomlkit import parse, dumps
 from pathlib import Path
+from enum import Enum
 
 def progressbar_batch(it, batch_size=50, prefix="", size=60, out=sys.stdout):
 	count = len(it)
@@ -46,11 +47,11 @@ def get_configs(section=None, key=None, config_file='config.toml'):
 	if section is not None:
 		configs = configs.get(section, {})
 		if key is not None:
-			configs = configs.get(key, '')
+			configs = configs.get(key, None)
 
 	return configs
 
-def set_configs(section=None, key=None, val=None, config_file='config.toml'):
+def set_configs(section=None, key=None, val=None, config_file='config.toml', overwrite=True):
 	config_path = Path(config_file)
 	if not config_path.exists():
 		raise Exception(f'Unable to find config file at {config_path.resolve()}')
@@ -61,7 +62,57 @@ def set_configs(section=None, key=None, val=None, config_file='config.toml'):
 	if section is not None:
 		if section not in configs:
 			configs[section] = {}
-		configs[section].update({key: val})
+		if (key in configs[section] and overwrite) \
+			or key not in configs[section]:
+			configs[section].update({key: val})
 	
 	with open(config_file, 'w') as f:
 		f.write(dumps(configs))
+
+class __DEFAULTS(Enum):
+	FILENAME		= 'tracklist.txt'
+	PROFILE			= 'USER'
+	INCREMENT		= 3
+	CSV_SEPARATOR	= ','
+
+def set_defaults():
+	for default_config in list(__DEFAULTS):
+		set_configs('DEFAULTS', default_config.name, default_config.value, overwrite=False)
+
+def get_default(setting):
+	default = get_configs('DEFAULTS', setting)
+	if default is None:
+		default = __DEFAULTS[setting].value
+	return default
+
+def get_path_obj(fname):
+	if isinstance(fname, Path):
+		pass
+	elif isinstance(fname, str):
+		fname = Path(fname)
+	else:
+		raise Exception(f'Unable to get the path specified: {fname}')
+	if not fname.exists():
+		raise Exception(f'File {fname.resolve()} not found.')
+	else:
+		return fname
+
+def check_file_path():
+	def deco(func):
+		def wrapper(*args, **kwargs):
+			file = args[0]
+			if isinstance(file, Path):
+				return func(*args, **kwargs)
+			elif isinstance(file, str):
+				file = Path(file)
+				if not file.exists():
+					raise FileNotFoundError(file.resolve())
+				else:
+					args = list(args)
+					args[0] = file
+					args = tuple(args)
+					return func(*args, **kwargs)
+			else:
+				raise Exception(f'Unable to get the path specified: {file}')
+		return wrapper
+	return deco

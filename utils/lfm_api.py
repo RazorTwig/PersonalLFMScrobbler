@@ -5,7 +5,7 @@ from hashlib import md5
 from datetime import datetime
 from pathlib import Path
 
-from utils.funcs import get_configs, set_configs, progressbar_batch
+from utils.funcs import get_configs, set_configs, progressbar_batch, get_default
 from utils.exceptions import APIResponseError
 
 # LastFM Statuses
@@ -57,31 +57,43 @@ class LastFM:
 	__API_DELAY_STEPS = 0.4
 	__LAST_REQUEST_AT = -1
 
-	def __init__(self, config_file=None, api_key=None, api_secret=None):
+	def __init__(self, config_file=None, api_key=None, api_secret=None, login=True, user=get_default('PROFILE')):
 		if api_key is not None and api_secret is not None:
 			self.__API_KEY = api_key
-			self.__SECRET = api_secret
+			self.__API_SECRET = api_secret
 		else:
 			if config_file is not None:
 				configs = get_configs('API', config_file=config_file)
 			else:
 				configs = get_configs('API')
 			
-			self.__API_KEY = configs['API_KEY']
-			self.__API_SECRET = configs['API_SECRET']
+			if 'API_KEY' in configs and 'API_SECRET' in configs:
+				self.__API_KEY = configs['API_KEY']
+				self.__API_SECRET = configs['API_SECRET']
+			else:
+				raise Exception('Unable to find API settings in config.toml')
 
 		if self.__API_KEY is None:
 			raise Exception('LastFM API Key cannot be empty.')
 		
-		session = get_configs('SESSION')
+		self.__SESSION_NAME = user
+		
+
+		session = get_configs(self.__SESSION_NAME)
 		if 'SESSION_KEY' in session and session['SESSION_KEY'] != '':
 			self.__SESSION = session
-		else:
+		elif login:
 			resp = input('No saved user sessions found. Would you like to login now?\n')
 			if resp.upper() == 'Y':
-				self.login()
+				success, user = self.login()
+				if success:
+					print(f'User {user} logged in.')
+				else:
+					print(f'Unable to log in user profile {user}.')
 			else:
 				self.__SESSION = None
+		else:
+			self.__SESSION = None
 
 	@property
 	def is_logged_in(self):
@@ -98,6 +110,13 @@ class LastFM:
 	@property
 	def api_delay_wait(self):
 		return self.__API_DELAY_STEPS
+	
+	@property
+	def user(self):
+		if self.__SESSION is not None:
+			return self.__SESSION['USER']
+		else:
+			return 'No user logged in.'
 	
 	def set_new_call_time(self, ts):
 		self.__LAST_REQUEST_AT = ts
@@ -213,19 +232,28 @@ class LastFM:
 		return (status_code, msg, ret_val)
 
 	def login(self):
-		token = self.__get_login_token()
-		session_key, user = self.__get_session_from_token(token)
-		self.__SESSION = {
-			'SESSION_KEY': session_key,
-			'USER': user
-		}
-		set_configs('SESSION', 'SESSION_KEY', session_key)
-		set_configs('SESSION', 'USER', user)
+		try:
+			token = self.__get_login_token()
+			session_key, user = self.__get_session_from_token(token)
+			self.__SESSION = {
+				'SESSION_KEY': session_key,
+				'USER': user
+			}
+			set_configs(self.__SESSION_NAME, 'SESSION_KEY', session_key)
+			set_configs(self.__SESSION_NAME, 'USER', user)
+			return (True, user)
+		except APIResponseError:
+			return (False, self.__SESSION_NAME)
 
 	def logout(self):
-		self.__SESSION = None
-		set_configs('SESSION', 'SESSION_KEY', '')
-		set_configs('SESSION', 'USER', '')
+		ret_val = (False, self.__SESSION_NAME)
+		if self.__SESSION is not None:
+			user = self.user
+			self.__SESSION = None
+			set_configs(self.__SESSION_NAME, 'SESSION_KEY', '')
+			set_configs(self.__SESSION_NAME, 'USER', '')
+			ret_val = (True, user)
+		return ret_val
 
 	@__handle_req_error(0, 1)
 	def __scrobble(self, scrobbles):
@@ -277,7 +305,9 @@ class LastFM:
 		accepted = 0
 		ignored = 0
 
+		print(f'Scrobbling {len(scrobbles)} tracks to user {self.user}')
 		with open(log_file_path, 'w', encoding='UTF-8') as log_file:
+			log_file.write(f'Scrobbling {len(scrobbles)} tracks to user {self.user}')
 			for batch in progressbar_batch(scrobbles, num_per_batch):
 				resp = self.__scrobble(batch)
 				for scrobble in resp:
