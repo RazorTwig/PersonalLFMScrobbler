@@ -84,7 +84,7 @@ The CSV file should have its various supported values separated by commas. The f
 	- e.g. Plain White T's, "1, 2, 3, 4", 8/12 9:40
 
 ## Config file (config.toml)
-This file is required for correct operation of the program.
+This file is required for correct operation of the program. It comes with config-empty.toml. This should be renamed to config.toml and modified as defined below.
 
 ### Sections
 - DEFAULTS (Required)
