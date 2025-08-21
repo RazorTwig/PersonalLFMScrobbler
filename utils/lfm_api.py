@@ -271,7 +271,7 @@ class LastFM:
 
 		status_code, msg = self.__send_post_request(params)
 		ret_val = []
-		for x in msg['scrobbles']['scrobble']:
+		for x in msg.get('scrobbles', {}).get('scrobble', []):
 			scrobble = {
 				'status': 'Accepted',
 				'track': f"{x['artist']['#text']} - {x['track']['#text']}",
