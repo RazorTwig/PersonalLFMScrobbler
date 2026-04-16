@@ -1,6 +1,8 @@
 from pathlib import Path
 import re
 from pendulum import now, local, from_timestamp
+import requests
+from bs4 import BeautifulSoup
 
 from utils.lfm_objects import Scrobble
 from utils.funcs import get_path_obj
@@ -11,6 +13,7 @@ class Reader():
 	date_re = r'([0-9\/]+) ([0-9:]+)'
 	time_re = r'([0-9:]+)'
 	tz = now().tz
+	too_old = int(now().subtract(days=14).timestamp())
 
 	def __init__(self, increment, csv_separator):
 		self.default_increment = increment
@@ -40,6 +43,10 @@ class Reader():
 
 		start_dt = local(int(year), int(month), int(day), hour=int(hour), minute=int(minute), second=int(second))
 		ts = int(start_dt.timestamp())
+		
+		if ts < self.too_old:
+			raise Exception(f'Date {from_timestamp(ts, self.tz)} is over 14 days ago and will not be accepted by Last.FM.')
+
 		return ts
 	
 	@staticmethod
@@ -123,6 +130,9 @@ class Reader():
 							'end': from_timestamp(self.__add_x_minutes(ts, increment), self.tz),
 							'tracks': []
 						}})
+				elif command[0] == '!URL':
+					# Attempt to get a tracklist from 1001Tracklists by searching it for the URL provided
+					liveset_url = command[1]
 				else:
 					# Assume it's a track otherwise
 					track = {
@@ -136,6 +146,13 @@ class Reader():
 					while len(splits) != 1 and not skip:
 						if len(splits) == 0:
 							# No dashes found
+							# If this is in an album, default to the Album Artist and rerun the splits
+							if album_artist is not None:
+								line = f'{album_artist} - {line}'
+								splits = find_dashes(line)
+								continue
+
+							# No Album Artist set, ask the user what to do
 							resp = input(f'"{line}" cannot be split. Do you want to RETYPE or DELETE or STOP? ')
 							if resp.upper() == 'DELETE':
 								# Skip this line

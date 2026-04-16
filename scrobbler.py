@@ -17,7 +17,7 @@ DEFAULT_PROFILE = get_default('PROFILE')
 DEFAULT_INC = get_default('INCREMENT')
 DEFAULT_SEP = get_default('CSV_SEPARATOR')
 
-parser.add_argument('action', choices=['check', 'login', 'scrobble', 'logout'])
+parser.add_argument('action', choices=['check', 'login', 'scrobble', 'logout'], default=['check'])
 parser.add_argument('-f', '--filename', default=DEFAULT_FILENAME, help=f'Specifies the file to read the scrobbles from. Default: {DEFAULT_FILENAME}')
 parser.add_argument('-u','--user', default=DEFAULT_PROFILE, help=f'Specifies the user session to be used from the config.toml file. Default: {DEFAULT_PROFILE}')
 parser.add_argument('-i', '--increment', default=DEFAULT_INC, help=f'Specifies the default amount of time between scrobbles in minutes. Default: {DEFAULT_INC}')

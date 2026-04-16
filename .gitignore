@@ -9,3 +9,6 @@ _tracklist.txt
 build/
 dist/
 scrobbler.spec
+tst.html
+
+.vscode/*
