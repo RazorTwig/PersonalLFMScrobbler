@@ -99,6 +99,11 @@ class Scrobble(Track):
 		self.timestamp = timestamp
 		self.track_no = track_no
 		self.duration = duration
+	
+	def __eq__(self, other):
+		if type(other) != Scrobble:
+			return False
+		return self.artist == other.artist and self.text == other.text and self.timestamp == other.timestamp
 
 	@property
 	def artist(self):

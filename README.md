@@ -45,6 +45,10 @@ The TXT file should have either a command, a single track, or a blank line, on e
 - !COMM (Optional)
 	- For any comments the user may want to add to their tracklist file.
 	- Anything on these lines will be ignored by the parser.
+- !URL (Optional)
+	- Argument is the URL for a liveset from somewhere like Youtube or Soundcloud.
+	- The program will attempt to search 1001 Tracklists for the set and will scrape any tracks it can find if it's successful.
+	- Some configuration will be necessary, see the Configs section for more details.
 
 ### Track format:
 All tracks should be in the format of 'ARTIST - TRACK'.
@@ -101,6 +105,11 @@ This file is required for correct operation of the program. It comes with config
 - One or more user profiles can be configured via logging in with using the '-u' argument.
 	- If no profile is found with the specified name, the program will ask if the user wants to login and authorize the program and, once they do, it will save the session key and user name under the profile for future use.
 	- Using the logout option will remove the session key and user name from the config file but not the profile itself.
+- 1001TL_HEADERS
+	- Used for defining the headers in the request sent to 1001 Tracklists if the "!URL" command is used.
+	- Most of it should work as is, but the "Cookie" section will need to be filled out before a URL can be used.
+		- You'll need to go to 1001 Tracklists, open the developer options of your browser, and watch the network traffic as you search for a track list.
+		- The "Cookie" value can be found in the request headers of any network request sent to www.1001tracklists.com
 
 
 ## Future tasks
