@@ -3,6 +3,7 @@ import re
 from pendulum import now, local, from_timestamp
 import requests
 from bs4 import BeautifulSoup
+import hashlib
 
 from utils.lfm_objects import Scrobble
 from utils.funcs import get_path_obj, get_configs
@@ -116,8 +117,8 @@ class Reader:
 			return self.__csv(fpath)
 
 	def __txt(self, fpath):
+		current_batch = self.__scrobbleBatch()
 		scrobble_batches = []
-		current_batch = None
 		album = None
 		album_artist = None
 
@@ -159,7 +160,7 @@ class Reader:
 					continue
 				elif command[0] == '!INT':
 					# Change the increment between songs (in minutes)
-					increment = float(command[1])
+					timer.set_increment(float(command[1]))
 				elif command[0] == '!ALB':
 					# Add or remove the album artist and album of the scrobble
 					if len(command) == 1 or command[1] == '':
@@ -171,13 +172,13 @@ class Reader:
 				elif command[0] == '!DATE':
 					# Change the date or time
 					timer.set_ts(command[1])
-					current_batch = self.__scrobbleBatch()
-					scrobble_batches.append(current_batch)
+					if len(current_batch.scrobbles) > 0:
+						scrobble_batches.append(current_batch)
+						current_batch = self.__scrobbleBatch()
 				elif command[0] == '!URL':
 					# Attempt to get a tracklist from 1001Tracklists by searching it for the URL provided
 					liveset_url = command[1]
 					current_batch.add_scrobbles(self.__scrape_tracklist(liveset_url))
-					# current_batch.add_scrobbles(self.__scrape_tracklist_test())
 				else:
 					# Assume it's a track otherwise
 					track = {
@@ -234,6 +235,8 @@ class Reader:
 										album_artist = track.get('albumArtist'))
 					current_batch.add_scrobble(scrobble)
 					timer.increment_ts()
+		
+		scrobble_batches.append(current_batch)
 		return scrobble_batches
 
 	def __csv(self, fpath):
@@ -337,43 +340,52 @@ class Reader:
 
 	def __scrape_tracklist(self, liveset_url):
 		scrobbles = []
-		headers = get_configs("1001TL_HEADERS")
-		params = {
-		'p': liveset_url,
-		'noIDFieldCheck': 'true',
-		'fixedMode': 'true',
-		'sf': 'p',
-		'acc': 'oss62eea'
-		}
 
-		def translate_url(tracklist_url):
-			chars_to_remove = [',']
-			for char in chars_to_remove:
-				tracklist_url = tracklist_url.replace(char, '')
-				tracklist_url = tracklist_url.replace(' ', '-').lower()
-			return tracklist_url
+		# First, check to see if it's been cached
+		cache_file = hashlib.md5(liveset_url.encode()).hexdigest() + '.txt'
+		cache_path = Path('liveset_cache')/cache_file
 
-		search_url = 'https://www.1001tracklists.com/ajax/search_tracklist.php'
-		search_results = requests.get(search_url, params=params, headers=headers)
-		if search_results.status_code != 200:
-			raise Exception(f'Unable to search 1001Tracklists for URL {liveset_url}. Status code: {search_results.status_code}')
+		if cache_path.exists():
+			print(f'Cache found for {liveset_url} at {cache_path.resolve()}. Using cached tracklist.')
+			scrobbles = self.__txt(cache_path)[0].scrobbles
 		else:
-			tl_results = search_results.json()
-			tl_info = tl_results['data'][0] if len(tl_results['data']) > 0 else None
-			if tl_info is None:
-				raise Exception(f'No tracklist found on 1001Tracklists for URL {liveset_url}.')
+			headers = get_configs("1001TL_HEADERS")
+			params = {
+			'p': liveset_url,
+			'noIDFieldCheck': 'true',
+			'fixedMode': 'true',
+			'sf': 'p',
+			'acc': 'oss62eea'
+			}
+
+			def translate_url(tracklist_url):
+				chars_to_remove = [',']
+				for char in chars_to_remove:
+					tracklist_url = tracklist_url.replace(char, '')
+					tracklist_url = tracklist_url.replace(' ', '-').lower()
+				return tracklist_url
+
+			search_url = 'https://www.1001tracklists.com/ajax/search_tracklist.php'
+			search_results = requests.get(search_url, params=params, headers=headers)
+			if search_results.status_code != 200:
+				raise Exception(f'Unable to search 1001Tracklists for URL {liveset_url}. Status code: {search_results.status_code}')
 			else:
-				tracklist_url_template = 'https://www.1001tracklists.com/tracklist/@id/@url.html'
-				tracklist_url = tracklist_url_template.replace('@id', tl_info['properties']['id_unique']).replace('@url', translate_url(tl_info['properties']['url_name']))
-				tl_html = requests.get(tracklist_url, headers=headers)
-				if tl_html.status_code != 200:
-					raise Exception(f'Unable to get tracklist page from 1001Tracklists for URL {liveset_url}. Status code: {tl_html.status_code}')
+				tl_results = search_results.json()
+				tl_info = tl_results['data'][0] if len(tl_results['data']) > 0 else None
+				if tl_info is None:
+					raise Exception(f'No tracklist found on 1001Tracklists for URL {liveset_url}.')
 				else:
-					tl_soup = BeautifulSoup(tl_html.content, 'html.parser')
-					scrobbles = self.parse_soup(tl_soup)
+					tracklist_url_template = 'https://www.1001tracklists.com/tracklist/@id/@url.html'
+					tracklist_url = tracklist_url_template.replace('@id', tl_info['properties']['id_unique']).replace('@url', translate_url(tl_info['properties']['url_name']))
+					tl_html = requests.get(tracklist_url, headers=headers)
+					if tl_html.status_code != 200:
+						raise Exception(f'Unable to get tracklist page from 1001Tracklists for URL {liveset_url}. Status code: {tl_html.status_code}')
+					else:
+						tl_soup = BeautifulSoup(tl_html.content, 'html.parser')
+						scrobbles = self.parse_soup(tl_soup, cache_path)
 		return scrobbles
 
-	def parse_soup(self, soup):
+	def parse_soup(self, soup, cache_path):
 		tracks = []
 		scrobbles = []
 
@@ -405,18 +417,15 @@ class Reader:
 					tracks.append(track_edits(track_text))
 		
 		if len(tracks) > 0:
-			temp_fname = Path('tmp_1001.txt')
-			with open(temp_fname, 'w', encoding='utf-8') as temp_file:
-				temp_file.write(f'!DATE {timer.from_timestamp().strftime('%m/%d %H:%M')}\n')
+			with open(cache_path, 'w', encoding='utf-8') as temp_file:
 				for track in tracks:
 					temp_file.write(f'{track}\n')
-			scrobble_batch = self.__txt(temp_fname)
+			scrobble_batch = self.__txt(cache_path)
 			scrobbles = scrobble_batch[0].scrobbles
-			temp_fname.unlink()
+			if not get_configs('DEFAULTS')['CACHE_LIVESETS']:
+				cache_path.unlink()
 
 		return scrobbles
-
-
 
 	@staticmethod
 	def print_summary(scrobble_batches):
@@ -447,8 +456,8 @@ class Reader:
 		print(f'Total scrobbles: {total_scrobbles}')
 
 	@staticmethod
-	def serialize_scrobbles(tracks):
+	def serialize_scrobbles(scrobble_batches):
 		scrobbles = []
-		for dt in tracks.keys():
-			scrobbles += tracks[dt]['tracks']
+		for batch in scrobble_batches:
+			scrobbles += batch.scrobbles
 		return scrobbles

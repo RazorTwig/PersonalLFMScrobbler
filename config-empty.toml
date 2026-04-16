@@ -4,6 +4,13 @@
 API_KEY 	= ""
 API_SECRET 	= ""
 
+[DEFAULTS]
+FILENAME		= 'tracklist.txt'
+PROFILE			= 'USER'
+INCREMENT		= 3
+CSV_SEPARATOR	= ','
+CACHE_LIVESETS	= true
+
 # A user session key will be stored here after logging in.
 [USER]
 SESSION_KEY = ""

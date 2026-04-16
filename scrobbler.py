@@ -56,9 +56,9 @@ def logout(user):
 
 def scrobble(args):
 	lfm = LastFM(user=args.user)
-	tracks = check(args)
+	scrobbles = check(args)
 
-	scrobbles = Reader.serialize_scrobbles(tracks)
+	scrobbles = Reader.serialize_scrobbles(scrobbles)
 	lfm.scrobble(scrobbles)
 
 
